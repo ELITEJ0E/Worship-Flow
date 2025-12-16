@@ -5,6 +5,7 @@ import { getCurrentUser, logoutUser } from './services/authService';
 import SongForm from './components/SongForm';
 import LiveSession from './pages/LiveSession';
 import AuthForm from './components/AuthForm';
+import ChordRenderer from './components/ChordRenderer';
 import { 
     Library, 
     ListMusic, 
@@ -28,12 +29,29 @@ import {
     CheckSquare,
     Square,
     GripVertical,
-    Check
+    Check,
+    Share2,
+    Link,
+    Copy,
+    ExternalLink,
+    AlertCircle,
+    Loader2
 } from 'lucide-react';
 
 const generateId = () => {
     return Date.now().toString(36) + Math.random().toString(36).substring(2);
 };
+
+// --- SHARED TYPES ---
+interface SharedSetlistData {
+    name: string;
+    songs: {
+        title: string;
+        artist: string;
+        key: string;
+        content: string;
+    }[];
+}
 
 // --- MODALS ---
 
@@ -78,10 +96,55 @@ const ConfirmModal = ({ isOpen, title, message, onConfirm, onCancel }: { isOpen:
                     <button onClick={onCancel} className="px-4 py-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors font-medium">Cancel</button>
                     <button 
                         onClick={onConfirm}
-                        className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-bold transition-colors shadow-lg shadow-red-500/30"
+                        className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 font-bold transition-colors shadow-lg"
                     >
-                        Delete
+                        Confirm
                     </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const ShareSetlistModal = ({ isOpen, onClose, setlistName, shareLink }: { isOpen: boolean, onClose: () => void, setlistName: string, shareLink: string }) => {
+    const [copied, setCopied] = useState(false);
+
+    if (!isOpen) return null;
+
+    const handleCopy = () => {
+        navigator.clipboard.writeText(shareLink);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
+    return (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md p-6 animate-in fade-in zoom-in duration-200">
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                        <Share2 size={20} className="text-primary"/> Share Setlist
+                    </h3>
+                    <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X size={20}/></button>
+                </div>
+                <p className="text-sm text-slate-500 mb-4">Anyone with this link can view the chords and lyrics for <strong>{setlistName}</strong>.</p>
+                
+                <div className="flex gap-2 mb-4">
+                    <input 
+                        readOnly 
+                        value={shareLink} 
+                        className="flex-1 bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-600 dark:text-slate-300 outline-none"
+                    />
+                    <button 
+                        onClick={handleCopy}
+                        className="bg-primary hover:bg-blue-700 text-white px-3 py-2 rounded-lg transition-colors flex items-center justify-center min-w-[44px]"
+                        title="Copy to Clipboard"
+                    >
+                        {copied ? <Check size={18} /> : <Copy size={18} />}
+                    </button>
+                </div>
+                
+                <div className="flex justify-end">
+                    <button onClick={onClose} className="text-slate-500 hover:text-slate-700 font-medium text-sm">Close</button>
                 </div>
             </div>
         </div>
@@ -204,6 +267,52 @@ const SongPickerModal = ({ isOpen, onClose, songs, onAdd, excludeIds = [] }: { i
 
 // --- SUB-COMPONENTS ---
 
+const ReadOnlySetlistView = ({ data }: { data: SharedSetlistData }) => {
+    return (
+        <div className="min-h-screen bg-surface dark:bg-slate-950 p-4 md:p-8 overflow-y-auto">
+            <div className="max-w-4xl mx-auto">
+                <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 md:p-10 shadow-xl border border-slate-200 dark:border-slate-800 mb-8">
+                    <div className="flex items-center gap-3 mb-2 text-primary">
+                        <Music2 size={32} />
+                        <span className="font-bold tracking-widest uppercase text-sm">WorshipFlow Shared Setlist</span>
+                    </div>
+                    <h1 className="text-3xl md:text-5xl font-black text-slate-900 dark:text-white mb-4">{data.name}</h1>
+                    <p className="text-slate-500 dark:text-slate-400 font-medium">{data.songs.length} Songs</p>
+                </div>
+
+                <div className="space-y-8">
+                    {data.songs.map((song, idx) => (
+                        <div key={idx} className="bg-white dark:bg-slate-900 rounded-2xl p-6 md:p-8 shadow-sm border border-slate-200 dark:border-slate-800">
+                            <div className="flex justify-between items-end border-b border-slate-100 dark:border-slate-800 pb-4 mb-6">
+                                <div>
+                                    <div className="flex items-center gap-3 mb-1">
+                                        <span className="bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm">
+                                            {idx + 1}
+                                        </span>
+                                        <h2 className="text-2xl font-bold text-slate-900 dark:text-white">{song.title}</h2>
+                                    </div>
+                                    <p className="text-slate-500 dark:text-slate-400 font-medium ml-11">{song.artist}</p>
+                                </div>
+                                <div className="text-right">
+                                    <span className="text-xs font-bold uppercase text-slate-400">Key</span>
+                                    <div className="text-xl font-black text-primary">{song.key}</div>
+                                </div>
+                            </div>
+                            <ChordRenderer content={song.content} transpose={0} />
+                        </div>
+                    ))}
+                </div>
+                
+                <div className="mt-12 text-center pb-8">
+                    <a href="/" className="inline-flex items-center gap-2 text-primary hover:underline font-bold">
+                        Create your own setlists with WorshipFlow <ExternalLink size={16}/>
+                    </a>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const SetlistCard = ({ 
     setlist, 
     allLibrarySongs, 
@@ -222,37 +331,88 @@ const SetlistCard = ({
     const [selectedSongIds, setSelectedSongIds] = useState<Set<string>>(new Set());
     const [isSongPickerOpen, setIsSongPickerOpen] = useState(false);
     
+    // Drag & Drop State
+    const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+    const [dragSourceIndex, setDragSourceIndex] = useState<number | null>(null);
+    const [pendingReorder, setPendingReorder] = useState<{from: number, to: number} | null>(null);
+
+    // Share State
+    const [shareModalOpen, setShareModalOpen] = useState(false);
+    const [shareLink, setShareLink] = useState('');
+    
     // Resolve songs. Filter out nulls if a song was deleted from library but ID remains in setlist.
     const setlistSongs = setlist.songIds.map(id => allLibrarySongs.find(s => s.id === id)).filter(Boolean) as Song[];
     const displaySongs = filterTerm 
         ? setlistSongs.filter(s => s.title.toLowerCase().includes(filterTerm.toLowerCase()) || s.artist.toLowerCase().includes(filterTerm.toLowerCase()))
         : setlistSongs;
 
+    const generateShareLink = () => {
+        const payload: SharedSetlistData = {
+            name: setlist.name,
+            songs: setlistSongs.map(s => ({
+                title: s.title,
+                artist: s.artist,
+                key: s.originalKey,
+                content: s.content
+            }))
+        };
+        // Simple encoding: JSON -> Base64
+        // Warning: URLs have length limits. Large setlists might be truncated in some contexts.
+        const json = JSON.stringify(payload);
+        const encoded = btoa(encodeURIComponent(json).replace(/%([0-9A-F]{2})/g,
+            function toSolidBytes(match, p1) {
+                return String.fromCharCode(parseInt(p1, 16));
+        }));
+        
+        const url = `${window.location.origin}${window.location.pathname}?share=${encoded}`;
+        setShareLink(url);
+        setShareModalOpen(true);
+    };
+
     // Drag and Drop Logic
     const handleDragStart = (e: React.DragEvent, index: number) => {
         e.dataTransfer.setData('text/plain', index.toString());
         e.dataTransfer.effectAllowed = 'move';
+        setDragSourceIndex(index);
+        
+        // Optional: Custom drag image if desired
+        // const img = new Image(); img.src = '...'; e.dataTransfer.setDragImage(img, 0, 0);
     };
 
-    const handleDragOver = (e: React.DragEvent) => {
-        e.preventDefault(); // Necessary to allow dropping
+    const handleDragOver = (e: React.DragEvent, index: number) => {
+        e.preventDefault(); 
+        if (dragSourceIndex === index) return;
+        setDragOverIndex(index);
         e.dataTransfer.dropEffect = 'move';
+    };
+
+    const handleDragLeave = () => {
+        // setDragOverIndex(null); // This can be flickery if not careful, better to handle on drop or exit container
     };
 
     const handleDrop = (e: React.DragEvent, dropIndex: number) => {
         e.preventDefault();
         const dragIndexStr = e.dataTransfer.getData('text/plain');
+        setDragOverIndex(null);
+        setDragSourceIndex(null);
+
         if (!dragIndexStr) return;
         
         const dragIndex = parseInt(dragIndexStr, 10);
         if (dragIndex === dropIndex) return;
 
-        // Reorder
-        const newIds = [...setlist.songIds];
-        const [movedItem] = newIds.splice(dragIndex, 1);
-        newIds.splice(dropIndex, 0, movedItem);
+        // Trigger confirmation instead of immediate update
+        setPendingReorder({ from: dragIndex, to: dropIndex });
+    };
 
+    const confirmReorder = () => {
+        if (!pendingReorder) return;
+        const { from, to } = pendingReorder;
+        const newIds = [...setlist.songIds];
+        const [movedItem] = newIds.splice(from, 1);
+        newIds.splice(to, 0, movedItem);
         onUpdate({ ...setlist, songIds: newIds });
+        setPendingReorder(null);
     };
 
     const handleAddSongs = (newIds: string[]) => {
@@ -285,13 +445,28 @@ const SetlistCard = ({
     };
 
     return (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden relative">
             <SongPickerModal 
                 isOpen={isSongPickerOpen}
                 onClose={() => setIsSongPickerOpen(false)}
                 songs={allLibrarySongs}
                 onAdd={handleAddSongs}
                 excludeIds={setlist.songIds}
+            />
+            
+            <ShareSetlistModal 
+                isOpen={shareModalOpen}
+                onClose={() => setShareModalOpen(false)}
+                setlistName={setlist.name}
+                shareLink={shareLink}
+            />
+
+            <ConfirmModal 
+                isOpen={!!pendingReorder}
+                title="Confirm Reorder"
+                message={`Are you sure you want to move this song to position ${pendingReorder ? pendingReorder.to + 1 : ''}?`}
+                onConfirm={confirmReorder}
+                onCancel={() => setPendingReorder(null)}
             />
             
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-50/50 dark:bg-slate-800/30">
@@ -319,6 +494,13 @@ const SetlistCard = ({
                                 <Plus size={16} /> Add Songs
                             </button>
                             <button 
+                                onClick={generateShareLink}
+                                className="bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-200 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-600 text-sm font-medium transition-colors"
+                                title="Share Setlist"
+                            >
+                                <Share2 size={16} /> Share
+                            </button>
+                            <button 
                                 onClick={() => onStartLive(setlistSongs)}
                                 disabled={setlistSongs.length === 0}
                                 className="bg-primary text-white px-5 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 shadow-md shadow-blue-500/20 disabled:opacity-50 disabled:shadow-none font-medium transition-all text-sm justify-center"
@@ -336,21 +518,35 @@ const SetlistCard = ({
                 </div>
             </div>
 
-            <div className="divide-y divide-slate-100 dark:divide-slate-800">
+            <div className="divide-y divide-slate-100 dark:divide-slate-800" onMouseLeave={() => setDragOverIndex(null)}>
                 {displaySongs.map((song, idx) => {
                     // Find original index for reordering to work correctly even when filtered
                     const originalIdx = setlist.songIds.indexOf(song.id);
                     const isSelected = selectedSongIds.has(song.id);
+                    const isDragOver = dragOverIndex === originalIdx;
+                    const isDragging = dragSourceIndex === originalIdx;
                     
                     return (
                     <div 
                         key={`${setlist.id}-${song.id}-${originalIdx}`} 
-                        className={`p-3 flex items-center justify-between transition-colors group ${isSelected ? 'bg-blue-50/50 dark:bg-blue-900/10' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}
+                        className={`
+                            p-3 flex items-center justify-between transition-all duration-200 group relative
+                            ${isSelected ? 'bg-blue-50/50 dark:bg-blue-900/10' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'}
+                            ${isDragOver ? 'border-2 border-primary shadow-lg scale-[1.01] z-10 rounded-xl bg-blue-50 dark:bg-slate-800' : 'border-2 border-transparent'}
+                            ${isDragging ? 'opacity-40' : 'opacity-100'}
+                        `}
                         draggable={!filterTerm} // Only drag when not filtering
                         onDragStart={(e) => handleDragStart(e, originalIdx)}
-                        onDragOver={handleDragOver}
+                        onDragOver={(e) => handleDragOver(e, originalIdx)}
                         onDrop={(e) => handleDrop(e, originalIdx)}
                     >
+                        {isDragOver && (
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                <span className="bg-primary text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg">
+                                    Drop to Move Here
+                                </span>
+                            </div>
+                        )}
                         <div className="flex items-center gap-3 md:gap-4 flex-1 overflow-hidden">
                             {/* Drag Handle / Checkbox Area */}
                             <div className="flex items-center gap-1">
@@ -415,9 +611,11 @@ const SetlistCard = ({
 
 const App = () => {
   const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true); // NEW: Loading state
   const [songs, setSongs] = useState<Song[]>([]);
   const [setlists, setSetlists] = useState<Setlist[]>([]);
-  const [view, setView] = useState<'library' | 'editor' | 'live' | 'setlists'>('library');
+  const [view, setView] = useState<'library' | 'editor' | 'live' | 'setlists' | 'shared'>('library');
+  const [sharedData, setSharedData] = useState<SharedSetlistData | null>(null);
   
   // State for Editor
   const [editingSong, setEditingSong] = useState<Song | undefined>(undefined);
@@ -446,6 +644,24 @@ const App = () => {
 
   // Initialize
   useEffect(() => {
+    // Check for shared link first
+    const params = new URLSearchParams(window.location.search);
+    const shareParam = params.get('share');
+    
+    if (shareParam) {
+        try {
+            const decoded = decodeURIComponent(atob(shareParam).split('').map(function(c) {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
+            const data: SharedSetlistData = JSON.parse(decoded);
+            setSharedData(data);
+            setView('shared');
+        } catch (e) {
+            console.error("Failed to parse shared setlist", e);
+            alert("Invalid share link");
+        }
+    }
+
     const currentUser = getCurrentUser();
     if (currentUser) {
         setUser(currentUser);
@@ -457,6 +673,8 @@ const App = () => {
     if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
         setDarkMode(true);
     }
+    
+    setIsLoading(false); // Stop loading after checks
   }, []);
 
   useEffect(() => {
@@ -585,6 +803,37 @@ const App = () => {
 
   // --- RENDERERS ---
 
+  // Shared View does not need auth
+  if (view === 'shared' && sharedData) {
+      return (
+        <div className="bg-surface dark:bg-slate-950 text-slate-900 dark:text-slate-100 min-h-screen">
+            <header className="fixed top-0 w-full h-16 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b dark:border-slate-800 flex items-center px-4 z-50">
+                 <div className="flex items-center gap-2 text-primary font-bold text-lg">
+                    <Music2 size={24} /> WorshipFlow
+                </div>
+                 <div className="ml-auto flex gap-3">
+                     <button onClick={() => setDarkMode(!darkMode)} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800">
+                         {darkMode ? <Sun size={20}/> : <Moon size={20}/>}
+                     </button>
+                 </div>
+            </header>
+            <div className="pt-16">
+                 <ReadOnlySetlistView data={sharedData} />
+            </div>
+        </div>
+      );
+  }
+
+  // Loading State
+  if (isLoading) {
+      return (
+          <div className="min-h-screen flex items-center justify-center bg-surface dark:bg-slate-950">
+              <Loader2 className="animate-spin text-primary" size={48} />
+          </div>
+      );
+  }
+
+  // Auth check
   if (!user) {
       return <AuthForm onLogin={handleLogin} />;
   }

@@ -23,6 +23,10 @@ export const registerUser = (username: string, password: string): User => {
     
     users.push(newUser);
     localStorage.setItem(USERS_KEY, JSON.stringify(users));
+    
+    // Automatically persist login state
+    localStorage.setItem(CURRENT_USER_KEY, newUser.id);
+
     return newUser;
 };
 
