@@ -1,7 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Song } from '../types';
-import { searchSongAI } from '../services/geminiService';
-import { Loader2, Sparkles, Save, X, Globe } from 'lucide-react';
+import { Save, X } from 'lucide-react';
 
 interface SongFormProps {
   initialSong?: Song;
@@ -15,38 +14,8 @@ const SongForm: React.FC<SongFormProps> = ({ initialSong, onSave, onCancel }) =>
   const [bpm, setBpm] = useState(initialSong?.bpm?.toString() || '');
   const [key, setKey] = useState(initialSong?.originalKey || 'C');
   const [content, setContent] = useState(initialSong?.content || '');
-  const [isAiLoading, setIsAiLoading] = useState(false);
-  const [aiError, setAiError] = useState<string | null>(null);
-  const [sources, setSources] = useState<{ uri: string; title: string }[]>([]);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  const handleAiSearch = async () => {
-    if (!title) return;
-    setIsAiLoading(true);
-    setAiError(null);
-    setSources([]);
-    try {
-      const searchStr = artist ? `${title} by ${artist}` : title;
-      const result = await searchSongAI(searchStr);
-      
-      if (result && result.songData) {
-        const { songData, sources } = result;
-        setTitle(songData.title || title);
-        setArtist(songData.artist || artist);
-        setKey(songData.originalKey || 'C');
-        setBpm(songData.bpm || '0');
-        setContent(songData.content || '');
-        setSources(sources);
-      } else {
-        setAiError("Could not find song details. Try adding 'chords' to the title.");
-      }
-    } catch (e) {
-      setAiError("Failed to fetch song. Please try again.");
-    } finally {
-      setIsAiLoading(false);
-    }
-  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,39 +52,7 @@ const SongForm: React.FC<SongFormProps> = ({ initialSong, onSave, onCancel }) =>
             placeholder="e.g. Way Maker"
           />
         </div>
-        {!initialSong && (
-             <button
-             type="button"
-             onClick={handleAiSearch}
-             disabled={isAiLoading || !title}
-             className="bg-primary text-white px-5 py-2.5 rounded-xl flex items-center gap-2 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/20 font-medium transition-all mb-[1px]"
-           >
-             {isAiLoading ? <Loader2 className="animate-spin" size={18} /> : <Sparkles size={18} />}
-             Auto-Fill
-           </button>
-        )}
       </div>
-
-      {aiError && (
-          <div className="bg-red-50 text-red-600 px-4 py-3 rounded-xl text-sm border border-red-100">
-              {aiError}
-          </div>
-      )}
-
-      {sources.length > 0 && (
-          <div className="bg-blue-50 dark:bg-slate-800 p-4 rounded-xl text-sm border border-blue-100 dark:border-slate-700">
-              <p className="font-bold text-blue-800 dark:text-blue-300 mb-2 flex items-center gap-2"><Globe size={14}/> Sources found:</p>
-              <ul className="space-y-1">
-                  {sources.map((source, idx) => (
-                      <li key={idx} className="truncate">
-                          <a href={source.uri} target="_blank" rel="noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-2">
-                              {source.title || source.uri}
-                          </a>
-                      </li>
-                  ))}
-              </ul>
-          </div>
-      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>

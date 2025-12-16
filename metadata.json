@@ -1,5 +1,5 @@
 {
   "name": "WorshipFlow",
-  "description": "A simplified chord chart and setlist manager for worship teams and musicians. Features offline storage, AI song lookup, live performance mode, and dynamic transposition.",
+  "description": "A simplified chord chart and setlist manager for worship teams and musicians. Features offline storage, live performance mode, and dynamic transposition.",
   "requestFramePermissions": []
 }
