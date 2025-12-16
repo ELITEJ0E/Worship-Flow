@@ -3,6 +3,7 @@ import { defineConfig } from "vite"
 import react from "@vitejs/plugin-react"
 
 export default defineConfig({
+  base: '/', // Important for deployment
   server: {
     port: 3000,
     host: "0.0.0.0",
@@ -11,6 +12,15 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "."),
+    },
+  },
+  build: {
+    outDir: 'dist',
+    sourcemap: false,
+    rollupOptions: {
+      output: {
+        manualChunks: undefined,
+      },
     },
   },
 })
